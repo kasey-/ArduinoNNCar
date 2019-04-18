@@ -4,8 +4,17 @@ extern "C"{
 #include <IRremote.h>
 #include <L298N.h>
 
+// Car state
+#define CAR_STATE_FORWARD  0
+#define CAR_STATE_RIGHT    1
+#define CAR_STATE_BACKWARD 2
+#define CAR_STATE_LEFT     3
+#define CAR_STATE_STOP    -1
+
+// IR setup
 #define IR_PIN 2
 
+// Sensor setup
 #define DIST_SENS_RIGHT_PIN A4
 #define DIST_SENS_LEFT_PIN  A5
 
@@ -18,7 +27,7 @@ extern "C"{
 #define IN4 9
 #define ENB 10
 // Motor Settings
-#define MOTOR_SPEED 500
+#define MOTOR_SPEED 255
 
 // IR Remote Hexa Keycode
 #define KEYCODE_UP    0x00FD8877
@@ -56,7 +65,7 @@ L298N motor2(ENB, IN3, IN4);
 IRrecv irrecv(IR_PIN);
 unsigned long last_ir = millis();
 
-int last_action = -1;
+int action_state = CAR_STATE_STOP;
 
 void setup() {
   // Setup the sensors
@@ -80,7 +89,7 @@ void setup() {
   motor2.setSpeed(MOTOR_SPEED);
 }
 
-void drive_car(float cmd_motor1, float cmd_motor2) {
+void drive_motor(float cmd_motor1, float cmd_motor2) {
   if(cmd_motor1 <= 0.25) {
     motor1.backward();
   } else if(cmd_motor1 > 0.25 && cmd_motor1 <= 0.75) {
@@ -98,50 +107,50 @@ void drive_car(float cmd_motor1, float cmd_motor2) {
   }
 }
 
-void predict_action(decode_results *results) {
-  float NN_input[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-  
+void decode_action(decode_results *results) {
   switch(results->value) {
     case KEYCODE_UP:
-      last_action = 0;
-      NN_input[0] = 1.0;
+      action_state = CAR_STATE_FORWARD;
     break;
     case KEYCODE_RIGHT:
-      last_action = 1;
-      NN_input[1] = 1.0;
+      action_state = CAR_STATE_RIGHT;
     break;
     case KEYCODE_DOWN:
-      last_action = 2;
-      NN_input[2] = 1.0;
+      action_state = CAR_STATE_BACKWARD;
     break;
     case KEYCODE_LEFT:
-      last_action = 3;
-      NN_input[3] = 1.0;
-    case KEYCODE_HOLD:
-      NN_input[last_action] = 1.0;
+      action_state = CAR_STATE_LEFT;
     break;
-    default:
-      last_action = -1;
-      drive_car(0.5, 0.5);
-      return;
   }
+}
 
+float* predict_output() {
+  float NN_input[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+  
+  if(action_state != CAR_STATE_STOP)
+    NN_input[action_state] = 1.0;
+  
   NN_input[4] = (float) !digitalRead(DIST_SENS_LEFT_PIN);
   NN_input[5] = (float) !digitalRead(DIST_SENS_RIGHT_PIN);
 
-  float *result = xtpredict(tinn,NN_input);
-  drive_car(result[0], result[1]);
+  return xtpredict(tinn,NN_input);
 }
 
 void loop() {
+  // handle user remote commands
   decode_results results;         // Somewhere to store the results
   if (irrecv.decode(&results)) {  // Grab an IR code
-    predict_action(&results);
+    decode_action(&results);
     irrecv.resume();              // Prepare for the next value
     last_ir = millis();
   }
-  // wait 110 ms to declare no new command. The remote send a command every 100 ms
-  if (millis() - last_ir > 110) { 
-    drive_car(0.5, 0.5);
+
+  // wait 210 ms to declare no new command. The remote send a command every 100 ms
+  if (millis() - last_ir > 210) { 
+    action_state = CAR_STATE_STOP;
   }
+
+  // use neural network to predict motor command
+  float *out = predict_output();
+  drive_motor(out[0], out[1]);
 }
