@@ -13,3 +13,9 @@ This project relies on the library Tinn by Glouw. Thank you very much for your s
 ## Step 3 - Understand the commands from the remote
 
 ## Step 4 - Tie everything together
+
+## Code Dependencies
+
+* Tinn Library https://github.com/glouw/tinn
+* L298N Library https://github.com/AndreaLombardo/L298N
+* IRremote Library https://github.com/z3t0/Arduino-IRremote
