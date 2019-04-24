@@ -12,7 +12,9 @@ This project relies on the library Tinn by Glouw. Thank you very much for your s
 
 ## Step 3 - Understand the commands from the remote
 
-## Step 4 - Tie everything together
+## Step 4 - Train the final neural network
+
+## Step 5 - Tie everything together
 
 ## Code Dependencies
 
