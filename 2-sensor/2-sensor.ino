@@ -15,7 +15,7 @@ float measure_ultrasonic_distance() {
   digitalWrite(UTRASONIC_TRIG_PIN, HIGH);  // set trig port high level for 10μs (at least 10μs)
   delayMicroseconds(10);
   digitalWrite(UTRASONIC_TRIG_PIN, LOW);   // set trig port low level
-  return pulseIn(UTRASONIC_ECHO_PIN, HIGH) / 58.273;
+  return pulseIn(UTRASONIC_ECHO_PIN, HIGH, 3000) / 58.273;
   /*
   Read echo port high level time(unit:μs)
   Distance(m) =(time(s) * 343.21(m/s)) / 2
